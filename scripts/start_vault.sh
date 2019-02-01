@@ -30,6 +30,7 @@ grep VAULT_ADDR ~/.bashrc || {
 echo "vault token:"
 cat /root/.vault-token
 echo -e "\nvault token is on /root/.vault-token"
+mkdir -p /vagrant/token/
 cp /root/.vault-token /vagrant/token/vault-token
   
 # enable secret KV version 1

@@ -51,10 +51,10 @@ sudo mkdir -p /etc/consul.d/ssl/
     pushd /etc/consul.d/ssl/
 
         if [[ $HOST =~ consul-server ]]; then
-            i=server
+            i=server  
         else
             i=client
-        fi
+        fi  
 
     GENCERT=`curl --header "X-Vault-Token: ${token}" --request POST --data '{"common_name": "'${i}.${DCNAME}.${DOMAIN}'", "ttl": "24h", "alt_names": "localhost", "ip_sans": "127.0.0.1"}' http://192.168.56.71:8200/v1/pki_int/issue/example-dot-com`
          
@@ -106,18 +106,20 @@ EOF
 ###################
 # Starting Consul #
 ###################
-    if [[ $HOST =~ consul-server* ]]; then
-
-        consul agent -server -ui -bind 0.0.0.0 -advertise $IPs -client 0.0.0.0 -data-dir=/tmp/consul \
-    -bootstrap-expect=$SERVER_COUNT -config-dir=/etc/consul.d/ssl/ -retry-join=192.168.56.52 \
-    -retry-join=192.168.56.51 > /vagrant/consul_logs/$HOST.log & 
-
+    if [[ $HOST =~ consul-server ]]; then
+        bootstrap="-bootstrap-expect=$SERVER_COUNT"
     else
-
-        consul agent -ui -bind 0.0.0.0 -advertise $IPs -client 0.0.0.0 -data-dir=/tmp/consul \
-    -enable-script-checks=true -config-dir=/etc/consul.d/ssl/ -retry-join=192.168.56.52 \
-    -retry-join=192.168.56.51 > /vagrant/consul_logs/$HOST.log & 
+        bootstrap=""
     fi
+        if [[ $HOST =~ consul-server ]]; then
+            s="-server"
+        else
+            s=""
+        fi
+
+consul agent $s -ui -bind 0.0.0.0 -advertise $IPs -client 0.0.0.0 -data-dir=/tmp/consul \
+    $bootstrap -config-dir=/etc/consul.d/ssl/ -retry-join=192.168.56.52 \
+    -retry-join=192.168.56.51 > /vagrant/consul_logs/$HOST.log & 
 
 set +x
 sleep 5

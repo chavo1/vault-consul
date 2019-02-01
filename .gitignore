@@ -1,0 +1,10 @@
+.vagrant/
+consul_1.4.0_linux_amd64.zip
+pkg/
+consul_logs/
+test.sh
+token/
+vault_logs
+CA_cert.crt
+intermediate.cert.pem
+pki_intermediate.csr

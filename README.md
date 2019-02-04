@@ -14,7 +14,7 @@
 ### Gossip Encryption for the network traffic
 - You only need to set an encryption key when starting the Consul agents.
 
-####How to use it:
+#### How to use it:
 
 - You need [Vagrant](https://www.vagrantup.com/)
 - Clone the repo

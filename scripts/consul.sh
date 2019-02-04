@@ -4,9 +4,10 @@ SERVER_COUNT=${SERVER_COUNT}
 CONSUL_VERSION=${CONSUL_VERSION}
 DCNAME=${DCNAME}
 DOMAIN=${DOMAIN}
-token=`cat /vagrant/token/vault-token`
+VAULT_TOKEN=`cat /vagrant/token/vault-token` # Vault token, it is needed to access vault
 IPs=$(hostname -I | cut -f2 -d' ')
 HOST=$(hostname)
+httpUrl="http://192.168.56.71:8200/v1/pki_int/issue/example-dot-com" # Vault address, from where the certificates will be acquired
 
 # Install packages
 
@@ -40,41 +41,41 @@ killall consul
 
 sudo mkdir -p /etc/consul.d/ssl/ /vagrant/consul_logs
 
-###########################
-# Starting consul servers #
-###########################
-
 set -x
 
+##########################
+# Starting consul agents #
+##########################
 sudo mkdir -p /etc/consul.d/ssl/
 
     pushd /etc/consul.d/ssl/
-
+ 
         if [[ $HOST =~ consul-server ]]; then
-            i=server  
+            export bootstrap="-bootstrap-expect=$SERVER_COUNT"  s="-server" i=server
         else
-            i=client
-        fi  
-
-    GENCERT=`curl --header "X-Vault-Token: ${token}" --request POST --data '{"common_name": "'${i}.${DCNAME}.${DOMAIN}'", "ttl": "24h", "alt_names": "localhost", "ip_sans": "127.0.0.1"}' http://192.168.56.71:8200/v1/pki_int/issue/example-dot-com`
-         
-        echo $GENCERT | jq -r .data.issuing_ca > consul-agent-ca.pem
-        echo $GENCERT | jq -r .data.certificate > consul-agent.pem
-        echo $GENCERT | jq -r .data.private_key > consul-agent.key
-    
-        if [ $? -ne 0 ]; then
-        echo 'Vault is not available'
-            exit 1
+            export bootstrap="" s="" i=client
         fi
+
+######################################
+# Acquiring a Certificate from Vault #
+######################################
+        GENCERT=`curl --header "X-Vault-Token: ${VAULT_TOKEN}" --request POST --data '{"common_name": "'${i}.${DCNAME}.${DOMAIN}'", "ttl": "24h", "alt_names": "localhost", "ip_sans": "127.0.0.1"}' $httpUrl`
+            if [ $? -ne 0 ]; then
+                echo "Vault is not available. Exit ..."
+                exit 1 # if vault is not available script will be terminated
+            else
+                echo $GENCERT | jq -r .data.issuing_ca > consul-agent-ca.pem
+                echo $GENCERT | jq -r .data.certificate > consul-agent.pem
+                echo $GENCERT | jq -r .data.private_key > consul-agent.key
+            fi
 
     popd
 
 ##############################
 # Enabling gossip encryption #
 ##############################
-
     if [ $HOST == consul-server01 ]; then
-        crypto=`consul keygen`
+        crypto=`consul keygen` # generate for first node
 sudo cat <<EOF > /etc/consul.d/ssl/encrypt.json
 {"encrypt": "${crypto}"}
 EOF
@@ -106,17 +107,6 @@ EOF
 ###################
 # Starting Consul #
 ###################
-    if [[ $HOST =~ consul-server ]]; then
-        bootstrap="-bootstrap-expect=$SERVER_COUNT"
-    else
-        bootstrap=""
-    fi
-        if [[ $HOST =~ consul-server ]]; then
-            s="-server"
-        else
-            s=""
-        fi
-
 consul agent $s -ui -bind 0.0.0.0 -advertise $IPs -client 0.0.0.0 -data-dir=/tmp/consul \
     $bootstrap -config-dir=/etc/consul.d/ssl/ -retry-join=192.168.56.52 \
     -retry-join=192.168.56.51 > /vagrant/consul_logs/$HOST.log & 
@@ -124,8 +114,8 @@ consul agent $s -ui -bind 0.0.0.0 -advertise $IPs -client 0.0.0.0 -data-dir=/tmp
 set +x
 sleep 5
 
-#######################
-# Check Consul members#
-#######################
+########################
+# Check Consul members #
+########################
 consul members -ca-file=/etc/consul.d/ssl/consul-agent-ca.pem -client-cert=/etc/consul.d/ssl/consul-agent.pem \
 -client-key=/etc/consul.d/ssl/consul-agent.key -http-addr="https://127.0.0.1:8501"

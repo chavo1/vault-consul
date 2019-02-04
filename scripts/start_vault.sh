@@ -48,23 +48,17 @@ sudo VAULT_ADDR="http://127.0.0.1:8200" vault write -field=certificate pki/root/
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault write pki/config/urls \
       issuing_certificates="http://127.0.0.1:8200/v1/pki/ca" \
       crl_distribution_points="http://127.0.0.1:8200/v1/pki/crl"
-
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault secrets enable -path=pki_int pki
-
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault secrets tune -max-lease-ttl=43800h pki_int
-
-
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault write -format=json pki_int/intermediate/generate/internal \
         common_name="example.com Intermediate Authority" ttl="43800h" \
         | jq -r '.data.csr' > pki_intermediate.csr
-
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault write -format=json pki/root/sign-intermediate csr=@pki_intermediate.csr \
         format=pem_bundle \
         | jq -r '.data.certificate' > intermediate.cert.pem
-
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault write pki_int/intermediate/set-signed certificate=@intermediate.cert.pem
-
 sudo VAULT_ADDR="http://127.0.0.1:8200" vault write pki_int/roles/example-dot-com \
         allowed_domains="${DCNAME}.${DOMAIN}" \
         allow_subdomains=true \
         max_ttl="720h"
+        

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-
+HOST=$(hostname)
 VAULT_VERSION=${VAULT_VERSION}
-PKG="wget unzip vim curl jq net-tools dnsutils"
+PKG="wget unzip vim curl jq net-tools dnsutils sshpass"
 
 which ${PKG} &>/dev/null || {
   export DEBIAN_FRONTEND=noninteractive

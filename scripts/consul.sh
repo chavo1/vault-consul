@@ -4,10 +4,10 @@ SERVER_COUNT=${SERVER_COUNT}
 CONSUL_VERSION=${CONSUL_VERSION}
 DCNAME=${DCNAME}
 DOMAIN=${DOMAIN}
-VAULT_TOKEN=`cat /vagrant/token/vault-token` # Vault token, it is needed to access vault
+VAULT_TOKEN=`cat /vagrant/token/keys.txt | grep "Initial Root Token:" | cut -c21-` # Vault token, it is needed to access vault
 IPs=$(hostname -I | cut -f2 -d' ')
 HOST=$(hostname)
-httpUrl="http://192.168.56.71:8200/v1/pki_int/issue/example-dot-com" # Vault address, from where the certificates will be acquired
+httpUrl="https://192.168.56.71:8200/v1/pki_int/issue/example-dot-com" # Vault address, from where the certificates will be acquired
 
 # Install packages
 
@@ -41,6 +41,7 @@ killall consul
 
 sudo mkdir -p /etc/consul.d/ssl/ /vagrant/consul_logs
 
+sshpass -p 'vagrant' scp -o StrictHostKeyChecking=no vagrant@192.168.56.71:"/etc/vault.d/vault.crt" /etc/consul.d/ssl/
 set -x
 
 ##########################
@@ -59,7 +60,7 @@ sudo mkdir -p /etc/consul.d/ssl/
 ######################################
 # Acquiring a Certificate from Vault #
 ######################################
-        GENCERT=`curl --header "X-Vault-Token: ${VAULT_TOKEN}" --request POST --data '{"common_name": "'${i}.${DCNAME}.${DOMAIN}'", "ttl": "24h", "alt_names": "localhost", "ip_sans": "127.0.0.1"}' $httpUrl`
+        GENCERT=`curl --cacert /etc/consul.d/ssl/vault.crt --header "X-Vault-Token: ${VAULT_TOKEN}" --request POST --data '{"common_name": "'${i}.${DCNAME}.${DOMAIN}'", "ttl": "24h", "alt_names": "localhost", "ip_sans": "127.0.0.1"}' $httpUrl`
             if [ $? -ne 0 ]; then
                 echo "Vault is not available. Exit ..."
                 exit 1 # if vault is not available script will be terminated

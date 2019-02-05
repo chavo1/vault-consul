@@ -1,6 +1,6 @@
 # This repo contains an example of how to encrypt Consul cluster communications with TLS and it is for learning purpose.
 
-## The certificates are requested from [Vault](https://www.vaultproject.io/) over HTTP.
+## The certificates are requested from [Vault](https://www.vaultproject.io/) over HTTPS.
 
 ### The steps from [Vault](https://learn.hashicorp.com/vault/secrets-management/sm-pki-engine) side are:
 - Enable [Vault PKI secrets engine](https://www.vaultproject.io/docs/secrets/pki/index.html)
